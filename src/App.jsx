@@ -710,7 +710,6 @@ export default function App() {
           </table>
         </div>
       </section>
-
       <section className="mb-6">
         <h3 className="font-semibold mb-2">7) Результати VIKOR — S, R, Q та ранжування</h3>
         <div className="overflow-auto border p-2 rounded">
@@ -740,12 +739,8 @@ export default function App() {
               ))}
             </tbody>
           </table>
-
           <div className="mt-3">
-
             <div className="mt-6 space-y-4">
-
-              {/* Умова 1 */}
               <div
                 className={`p-4 border rounded-xl ${compromiseCheck.cond1
                   ? "  text-green-700"
@@ -763,8 +758,6 @@ export default function App() {
                   {"  "} | DQ = {compromiseCheck.DQ.toFixed(4)}
                 </div>
               </div>
-
-
               <div
                 className={`p-4 border rounded-xl ${compromiseCheck.cond2
                   ? " text-green-700"
@@ -781,14 +774,11 @@ export default function App() {
                   Лідер повинен бути першим за S або R
                 </div>
               </div>
-
-              {/* Загальне повідомлення */}
               {!(compromiseCheck.cond1 && compromiseCheck.cond2) && (
                 <div className="p-4  border border-red-700 text-red-700 font-semibold rounded-xl">
                   Одна умова не виконується, пропонується набір компромісних рішень.
                 </div>
               )}
-
             </div>
             {compromiseCheck.bestAlternatives.length > 0 && (
               <div className="mt-2">
