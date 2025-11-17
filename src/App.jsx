@@ -24,17 +24,17 @@ const ALT_TERMS = {
 const CRITERIA_OPTIONS = Object.keys(CRITERIA_TERMS);
 const ALT_OPTIONS = Object.keys(ALT_TERMS);
 
-// --- fuzzy helpers ---
+
 const addTri = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-const subTri = (a, b) => [a[0] - b[2], a[1] - b[1], a[2] - b[0]]; // A - B
+const subTri = (a, b) => [a[0] - b[2], a[1] - b[1], a[2] - b[0]];
 const mulTriScalar = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
 const divTriScalar = (a, s) => [a[0] / s, a[1] / s, a[2] / s];
-const mulTri = (a, b) => [a[0] * b[0], a[1] * b[1], a[2] * b[2]]; // elementwise
+const mulTri = (a, b) => [a[0] * b[0], a[1] * b[1], a[2] * b[2]];
 const divTri = (a, b) => [
   safeDiv(a[0], b[2]),
   safeDiv(a[1], b[1]),
   safeDiv(a[2], b[0]),
-]; // approximate division
+];
 const safeDiv = (x, y) => {
   if (!isFinite(y) || y === 0) return 0;
   return x / y;
@@ -43,7 +43,7 @@ const defuzz = (tri) => (tri[0] + tri[1] + tri[2]) / 3;
 const triMax = (a, b) => [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2])];
 const triMin = (a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2])];
 
-// --- App ---
+
 export default function App() {
   const [numAlternatives, setNumAlternatives] = useState(4);
   const [numCriteria, setNumCriteria] = useState(5);
@@ -143,7 +143,7 @@ export default function App() {
     });
   };
 
-  // --- aggregated fuzzy weights (per criterion) ---
+
   const aggregatedCriteria = useMemo(() => {
     const K = numExperts;
     const result = [];
@@ -162,7 +162,7 @@ export default function App() {
     return result;
   }, [criteriaWeights, numCriteria, numExperts]);
 
-  // --- aggregated fuzzy performances for alternatives ---
+
   const aggregatedAlts = useMemo(() => {
     const K = numExperts;
     const res = [];
@@ -186,11 +186,11 @@ export default function App() {
     return res;
   }, [altEvaluations, numAlternatives, numCriteria, numExperts]);
 
-  // --- Find fuzzy ideal (f*) and anti-ideal (f-) per criterion ---
+
   const idealF = useMemo(() => {
     const res = [];
     for (let j = 0; j < numCriteria; j++) {
-      // initialize with first alt
+
       if (numAlternatives === 0) {
         res.push([0, 0, 0]);
         continue;
@@ -243,8 +243,8 @@ export default function App() {
         const f_ij = aggregatedAlts[a][j] || [0, 0, 0];
 
 
-        const denom = subTri(fStar, fMinus); // f* - f^-
-        const numer = subTri(fStar, f_ij); // f* - f_ij
+        const denom = subTri(fStar, fMinus);
+        const numer = subTri(fStar, f_ij);
 
 
         let normalized;
@@ -269,7 +269,7 @@ export default function App() {
     return res;
   }, [aggregatedAlts, idealF, antiIdealF, criteriaTypes, numAlternatives, numCriteria]);
 
-  // --- Weighted normalized fuzzy (elementwise multiply by fuzzy weight) ---
+
   const weightedNormalizedFuzzy = useMemo(() => {
     const res = [];
     for (let a = 0; a < numAlternatives; a++) {
@@ -277,8 +277,8 @@ export default function App() {
       for (let j = 0; j < numCriteria; j++) {
         const normTri = normalizedFuzzy[a][j] || [0, 0, 0];
         const wTri = aggregatedCriteria[j] || [0, 0, 0];
-        const prod = mulTri(normTri, wTri); // elementwise
-        // ensure finite
+        const prod = mulTri(normTri, wTri);
+
         row.push(prod.map((v) => (!isFinite(v) || Number.isNaN(v) ? 0 : v)));
       }
       res.push(row);
@@ -286,7 +286,7 @@ export default function App() {
     return res;
   }, [normalizedFuzzy, aggregatedCriteria, numAlternatives, numCriteria]);
 
-  // --- Compute S_i (sum of weighted normalized defuzzified values) and R_i (max single) ---
+
   const { S_fuzzy, S_defuzz, R_defuzz } = useMemo(() => {
     const S_fuzzy_local = [];
     const S_defuzz_local = [];
@@ -308,17 +308,17 @@ export default function App() {
     return { S_fuzzy: S_fuzzy_local, S_defuzz: S_defuzz_local, R_defuzz: R_defuzz_local };
   }, [weightedNormalizedFuzzy, numAlternatives, numCriteria]);
 
-  // --- S* (min), S^- (max), R* (min), R^- (max) ---
+
   const S_star = useMemo(() => Math.min(...S_defuzz), [S_defuzz]);
   const S_minus = useMemo(() => Math.max(...S_defuzz), [S_defuzz]);
   const R_star = useMemo(() => Math.min(...R_defuzz), [R_defuzz]);
   const R_minus = useMemo(() => Math.max(...R_defuzz), [R_defuzz]);
 
-  // --- Compute Q (with v = 0.5) ---
+
   const [vValue, setVvalue] = useState(0.5)
   const Q_defuzz = useMemo(() => {
     if (!isFinite(S_star) || !isFinite(S_minus) || S_minus === S_star) {
-      // degenerate
+
       return S_defuzz.map(() => 0);
     }
     return S_defuzz.map((Si, idx) => {
@@ -327,9 +327,7 @@ export default function App() {
       const termR = R_minus === R_star ? 0 : safeDiv(Ri - R_star, R_minus - R_star);
       return vValue * termS + (1 - vValue) * termR;
     });
-  }, [S_defuzz, R_defuzz, S_star, S_minus, R_star, R_minus]);
-
-  // --- ranking by Q (and also provide ranks for S and R) ---
+  }, [S_defuzz, R_defuzz, S_star, S_minus, R_star, R_minus, vValue]);
   const ranking = useMemo(() => {
     const arr = Array.from({ length: numAlternatives }).map((_, i) => ({
       idx: i,
@@ -341,7 +339,6 @@ export default function App() {
     const byS = [...arr].sort((a, b) => a.S - b.S);
     const byR = [...arr].sort((a, b) => a.R - b.R);
 
-    // attach ranks
     const attachRank = (list, key) => {
       list.forEach((it, i) => {
         it[key + "rank"] = i + 1;
@@ -351,7 +348,6 @@ export default function App() {
     attachRank(byS, "S");
     attachRank(byR, "R");
 
-    // return final sorted by Q
     const final = byQ.map((it) => ({
       alt: it.idx,
       Q: it.Q,
@@ -364,9 +360,6 @@ export default function App() {
     return final;
   }, [numAlternatives, S_defuzz, R_defuzz, Q_defuzz]);
 
-  // --- compromise condition checks (standard VIKOR) ---
-  // 1) Acceptable advantage: Q(a2) - Q(a1) >= DQ where DQ = 1/(m-1)
-  // 2) Acceptable stability: alternative a1 should also be best ranked by S or R
   const compromiseCheck = useMemo(() => {
     if (numAlternatives < 2) return { ok: false, bestAlternatives: [] };
     const DQ = 1 / (numAlternatives - 1);
@@ -377,7 +370,7 @@ export default function App() {
     const cond1 = advantage >= DQ;
     const cond2 = a1.Srank === 1 || a1.Rrank === 1;
 
-    // якщо не виконується cond1, беремо всі, у кого Q близьке до Q(a1)
+
     let bestAlternatives = [];
     if (cond1 && cond2) {
       bestAlternatives = [a1];
@@ -396,7 +389,7 @@ export default function App() {
     };
   }, [ranking, numAlternatives]);
 
-  // --- sample loader (keeps previous behaviour) ---
+
   const loadSample = () => {
     const sampleCriteria = [
       ["M", "MH", "H", "M", "L"],
@@ -417,7 +410,7 @@ export default function App() {
     setAltEvaluations(sampleAlts);
   };
 
-  // --- render helpers ---
+
   const renderCriteriaTable = () => {
     return (
       <div className="overflow-auto border p-2 rounded">
@@ -749,12 +742,54 @@ export default function App() {
           </table>
 
           <div className="mt-3">
-            <div><strong>DQ (threshold):</strong> {compromiseCheck.DQ?.toFixed?.(4) ?? "-"}</div>
-            <div><strong>Advantage (Q2 - Q1):</strong> {compromiseCheck.advantage?.toFixed?.(4) ?? "-"}</div>
-            <div><strong>Condition 1 (advantage ≥ DQ):</strong> {compromiseCheck.cond1 ? "так" : "ні"}</div>
-            <div><strong>Condition 2 (best by S or R):</strong> {compromiseCheck.cond2 ? "так" : "ні"}</div>
-            <div className="mt-2"><strong>Компромісне рішення прийнятне:</strong> {compromiseCheck.ok ? "ТАК" : "НІ"}</div>
 
+            <div className="mt-6 space-y-4">
+
+              {/* Умова 1 */}
+              <div
+                className={`p-4 border rounded-xl ${compromiseCheck.cond1
+                  ? "  text-green-700"
+                  : " text-red-700"
+                  }`}
+              >
+                <div className="font-semibold">
+                  Умова 1 (прийнятна перевага):
+                </div>
+                <div>
+                  {compromiseCheck.cond1 ? "✔ Виконується" : "❌ Не виконується"}
+                </div>
+                <div className="text-sm opacity-70">
+                  Q₂ − Q₁ = {compromiseCheck.advantage.toFixed(4)}
+                  {"  "} | DQ = {compromiseCheck.DQ.toFixed(4)}
+                </div>
+              </div>
+
+
+              <div
+                className={`p-4 border rounded-xl ${compromiseCheck.cond2
+                  ? " text-green-700"
+                  : " text-red-700"
+                  }`}
+              >
+                <div className="font-semibold">
+                  Умова 2 (прийнятна стабільність у прийнятті рішень):
+                </div>
+                <div>
+                  {compromiseCheck.cond2 ? "✔ Виконується" : "❌ Не виконується"}
+                </div>
+                <div className="text-sm opacity-70">
+                  Лідер повинен бути першим за S або R
+                </div>
+              </div>
+
+              {/* Загальне повідомлення */}
+              {!(compromiseCheck.cond1 && compromiseCheck.cond2) && (
+                <div className="p-4  border border-red-700 text-red-700 font-semibold rounded-xl">
+                  Одна умова не виконується, пропонується набір компромісних рішень.
+                </div>
+              )}
+
+            </div>
             {compromiseCheck.bestAlternatives.length > 0 && (
               <div className="mt-2">
                 <strong>Найкращі альтернативи:</strong>{" "}
@@ -765,7 +800,6 @@ export default function App() {
               </div>
             )}
           </div>
-
         </div>
       </section>
     </div>
